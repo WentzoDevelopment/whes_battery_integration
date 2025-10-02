@@ -1,21 +1,11 @@
-# WHES Battery (EMS + Ammeter) – Home Assistant integratie
+# WHES Battery (Home Assistant)
 
+Home Assistant integratie voor WHES/Weiheng EMS + Ammeter metrics.
 
-Leest elke 60s de **WHES OpenAPI** (EU datacenter by default) en maakt sensoren aan voor EMS en Ammeter.
-
-## Sensoren
-
-
+- UI-configuratie (Config Flow): vul API key/secret, Project/Device/Ammeter IDs in.
+- Publiceert o.a. SoC/SoH, EMS AC/DC power, netvermogens per fase.
 
 ## Installatie (HACS)
-1. HACS → Integrations → 3‑puntjes → **Custom repositories** → voeg jouw repo‑URL toe, Category: Integration.
-2. Installeer **WHES Battery (EMS + Ammeter)**.
-3. Home Assistant herstarten.
-4. Instellingen → Apparaten & Diensten → **Integratie toevoegen** → WHES Battery.
-5. Vul **API Key**, **API Secret**, **Project ID**, **Device ID**, **Ammeter ID** in. Optioneel: **Base URL**.
-
-
-## Opmerking over waarden
-- EMS sensoren publiceren de laatst beschikbare sample in het 60s‑window.
-- Ammeter vermogens worden **genormaliseerd** (teken omgedraaid) zodat import/afname positief wordt.
-- Polling interval staat op 60s; wil je iets anders, pas `DEFAULT_UPDATE_SECONDS` aan in `const.py`.
+1. HACS → Integrations → ⋯ → Custom repositories → voeg deze repo toe (Category: Integration).
+2. Installeer **WHES Battery**.
+3. Home Assistant → Settings → Devices & Services → **Add Integration** → “WHES”.

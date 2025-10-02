@@ -1,22 +1,7 @@
 {
   "config": {
-    "step": {
-      "user": {
-        "title": "WHES Battery",
-        "description": "Vul je WHES OpenAPI gegevens in (EU base URL is voorgedefinieerd).",
-        "data": {
-          "api_key": "API Key",
-          "api_secret": "API Secret",
-          "project_id": "Project ID",
-          "device_id": "Device ID",
-          "ammeter_id": "Ammeter ID",
-          "base_url": "Base URL"
-        }
-      }
-    },
-    "error": {
-      "invalid_url": "Ongeldige URL",
-      "required": "Veld is verplicht"
-    }
+    "step": { "user": { "title": "WHES instellen", "description": "Voer je API-gegevens en IDs in" } },
+    "error": { "cannot_connect": "Kon niet verbinden met WHES API", "invalid_auth": "Ongeldige sleutel/geheim of ID's" },
+    "options": { "step": { "init": { "title": "WHES opties" } } }
   }
 }

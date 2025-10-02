@@ -6,6 +6,7 @@ from collections import OrderedDict, Counter
 from typing import Any, Dict, List
 from urllib.parse import parse_qs, quote, urlparse
 import aiohttp
+import logging
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -13,6 +14,8 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from datetime import timedelta
 
 from .const import *
+
+_LOGGER = logging.getLogger(__name__)
 
 def _unique_columns(cols: List[str]) -> List[str]:
     seen = Counter(); out=[]
@@ -103,7 +106,7 @@ class WhesCoordinator(DataUpdateCoordinator[dict]):
         self.entry = entry
         self.session = async_get_clientsession(hass)
         interval = max(MIN_SCAN_INTERVAL, int(entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)))
-        super().__init__(hass, logger=None, name="whes_coordinator", update_interval=timedelta(seconds=interval))
+        super().__init__(hass, logger=_LOGGER, name="whes_coordinator", update_interval=timedelta(seconds=interval))
 
     async def _async_update_data(self) -> dict:
         d = self.entry.data

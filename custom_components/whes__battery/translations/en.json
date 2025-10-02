@@ -1,0 +1,22 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "WHES Battery",
+        "description": "Enter your WHES OpenAPI credentials (the EU base URL is already set).",
+        "data": {
+          "api_key": "API Key",
+          "api_secret": "API Secret",
+          "project_id": "Project ID",
+          "device_id": "Device ID",
+          "ammeter_id": "Ammeter ID",
+          "base_url": "Base URL"
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Invalid URL",
+      "required": "This field is required"
+    }
+  }
+}

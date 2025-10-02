@@ -1,0 +1,6 @@
+{
+"name": "WHES Battery (EMS + Ammeter)",
+"render_readme": true,
+"domains": ["sensor"],
+"country": "NL"
+}

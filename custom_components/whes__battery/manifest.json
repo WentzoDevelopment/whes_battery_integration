@@ -1,0 +1,13 @@
+{
+  "domain": "whes_battery",
+  "name": "WHES Battery (EMS + Ammeter)",
+  "codeowners": ["@TiemcoM"],
+  "documentation": "https://www.example.com",
+  "iot_class": "cloud_polling",
+  "integration_type": "hub",
+  "requirements": [
+    "aiohttp>=3.9.0",
+    "voluptuous>=0.13.1"
+  ],
+  "config_flow": true
+}

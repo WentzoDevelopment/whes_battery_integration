@@ -115,7 +115,7 @@ class WhesCoordinator(DataUpdateCoordinator[dict]):
         base = d.get(CONF_BASE_URL, DEFAULT_BASE_URL).rstrip("/")
 
         ems_body = {"start": start_ms, "end": end_ms, "sample_by": sample, "columns": [
-            "ems_soc","ems_soh","ems_dc_power_neg","ems_dc_power_pos","ems_ac_active_power",
+            "ems_soc","ems_soh", "ems_state", "ems_dc_power_neg","ems_dc_power_pos","ems_ac_active_power",
             "ems_ac_frequency","ems_history_input_energy","ems_history_output_energy",
             "ems_ac_active_power_A","ems_ac_active_power_B","ems_ac_active_power_C"
         ]}

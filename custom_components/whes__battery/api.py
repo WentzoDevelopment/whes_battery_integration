@@ -192,6 +192,7 @@ class WhesClient:
             "columns": [
                 "ems_soc",
                 "ems_soh",
+                "ems_state",
                 "ems_dc_power_neg",
                 "ems_dc_power_pos",
                 "ems_ac_active_power",

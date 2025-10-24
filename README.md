@@ -30,7 +30,7 @@ If you would like to extend this integration — for example, by adding new sens
 
 This documentation describes all available endpoints, parameters, and data structures supported by the WHES Pangu platform.
 ## 🧾 License
-This project is licensed under the [MIT License](./LICENSE).
+This project is licensed under the [MIT License](./LICENSE.md).
 
 ## ⚠️ Disclaimer
 This integration is provided *as is* without any warranties or official support from Wentzo.  

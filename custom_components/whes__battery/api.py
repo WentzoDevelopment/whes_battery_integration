@@ -8,7 +8,10 @@ from collections import OrderedDict, Counter
 from typing import Any, Callable, Dict, List, Optional
 from urllib.parse import urlparse, parse_qs, quote
 import aiohttp
+import logging
 
+# Home Assistant-style logger
+_LOGGER = logging.getLogger(__name__)
 
 # ===== helpers uit jouw main.py (aangepast naar async usage) =====
 def now_ms() -> int:
@@ -50,6 +53,12 @@ def metrics_to_kv_list(
     metadata: List[str] = list(data.get("metadata") or [])
 
     if not columns or not rows:
+        if not columns and not rows:
+            _LOGGER.warning("WHES: metrics response bevat geen 'columns' en geen 'rows'.")
+        elif not columns:
+            _LOGGER.warning("WHES: metrics response bevat geen 'columns' (rows=%d).", len(rows))
+        else:
+            _LOGGER.warning("WHES: metrics response bevat geen 'rows' (columns=%d).", len(columns))
         return []
 
     columns = _unique_columns(columns)
@@ -63,20 +72,30 @@ def metrics_to_kv_list(
         base.get(str(m).upper(), lambda v: v) for m in (metadata or [None] * len(columns))
     ]
     if len(coercers) != len(columns):
+        _LOGGER.debug(
+            "WHES: metadata/columns lengte mismatch (metadata=%d, columns=%d); gebruik identity coercers.",
+            len(coercers),
+            len(columns),
+        )
         coercers = [lambda v: v] * len(columns)
 
     out: List[Dict[str, Any]] = []
-    for r in rows:
+    for idx, r in enumerate(rows):
         n = min(len(columns), len(r))
+        if n != len(columns):
+            _LOGGER.debug(
+                "WHES: rij %d heeft %d waarden voor %d kolommen; trailing kolommen worden op None gezet.",
+                idx, n, len(columns)
+            )
         row_dict: Dict[str, Any] = {}
 
         for i in range(n):
             val = r[i]
             try:
                 val = coercers[i](val)
-            except Exception:
+            except Exception as ce:
                 # Laat de ruwe waarde staan als coercion faalt
-                pass
+                _LOGGER.debug("WHES: coercion fout op kolom '%s': %r (behoud ruwe waarde).", columns[i], ce)
             row_dict[columns[i]] = val
 
         # Vul ontbrekende trailing kolommen met None
@@ -85,6 +104,7 @@ def metrics_to_kv_list(
 
         out.append(row_dict)
 
+    _LOGGER.debug("WHES: metrics_to_kv_list -> %d rijen, %d kolommen.", len(out), len(columns))
     return out
 
 
@@ -168,20 +188,57 @@ class WhesClient:
     async def _post(self, path: str, json_body: dict | None = None, params: dict | None = None) -> dict:
         url = f"{self._base}{path}"
         headers = self._signed_headers("POST", url, params)
-        async with self._session.post(
-            url,
-            headers=headers,
-            params=params,
-            json=json_body,
-            timeout=aiohttp.ClientTimeout(total=20),
-        ) as resp:
-            resp.raise_for_status()
-            return await resp.json(content_type=None)
+        t0 = time.perf_counter()
+        try:
+            _LOGGER.debug(
+                "WHES: POST %s (params=%s, body_keys=%s)",
+                path, list((params or {}).keys()), list((json_body or {}).keys())
+            )
+            async with self._session.post(
+                url,
+                headers=headers,
+                params=params,
+                json=json_body,
+                timeout=aiohttp.ClientTimeout(total=20),
+            ) as resp:
+                status = resp.status
+                # NB: raise_for_status zal bij 4xx/5xx exception gooien (we loggen dat in except)
+                resp.raise_for_status()
+                data = await resp.json(content_type=None)
+                dt_ms = int((time.perf_counter() - t0) * 1000)
+                # compacte shape logging zonder data te dumpen
+                size_hint = len(str(data)) if data is not None else 0
+                _LOGGER.debug(
+                    "WHES: POST %s -> %d in %d ms (resp_size≈%d chars)",
+                    path, status, dt_ms, size_hint
+                )
+                return data
+        except aiohttp.ClientResponseError as cre:
+            dt_ms = int((time.perf_counter() - t0) * 1000)
+            _LOGGER.exception("WHES: HTTP fout %s bij POST %s (na %d ms)", cre.status, path, dt_ms)
+            raise
+        except aiohttp.ClientError as ce:
+            dt_ms = int((time.perf_counter() - t0) * 1000)
+            _LOGGER.exception("WHES: Netwerkfout bij POST %s: %r (na %d ms)", path, ce, dt_ms)
+            raise
+        except ValueError as ve:
+            dt_ms = int((time.perf_counter() - t0) * 1000)
+            _LOGGER.exception("WHES: JSON decode fout bij POST %s: %r (na %d ms)", path, ve, dt_ms)
+            raise
+        except Exception as e:
+            dt_ms = int((time.perf_counter() - t0) * 1000)
+            _LOGGER.exception("WHES: Onverwachte fout bij POST %s: %r (na %d ms)", path, e, dt_ms)
+            raise
 
     async def fetch_bundle(self, poll_seconds: int = 60, overlap_seconds: int = 15) -> Dict[str, Any]:
         end_ms = now_ms()
         start_ms = end_ms - (poll_seconds + overlap_seconds) * 1000
         sample_by = "10s"
+
+        _LOGGER.debug(
+            "WHES: fetch_bundle window start=%d end=%d (poll=%ds, overlap=%ds, sample_by=%s)",
+            start_ms, end_ms, poll_seconds, overlap_seconds, sample_by
+        )
 
         # EMS
         ems_path = f"/pangu/v1/projects/{self._project_id}/devices/{self._device_id}/ems/metrics"
@@ -206,6 +263,10 @@ class WhesClient:
         }
         ems_raw = await self._post(ems_path, json_body=ems_body)
         ems_rows = metrics_to_kv_list(ems_raw)
+        if not ems_rows:
+            _LOGGER.error("WHES: EMS metrics leeg voor device_id=%s (window=%d..%d).", self._device_id, start_ms, end_ms)
+        else:
+            _LOGGER.debug("WHES: EMS metrics ontvangen: %d rijen.", len(ems_rows))
         ems_last = ems_rows[-1] if ems_rows else {}
 
         # Ammeter
@@ -223,10 +284,29 @@ class WhesClient:
         }
         amm_raw = await self._post(ammeter_path, json_body=ammeter_body)
         amm_rows = metrics_to_kv_list(amm_raw)
+        if not amm_rows:
+            _LOGGER.error(
+                "WHES: Ammeter metrics leeg voor ammeter_id=%s (window=%d..%d).",
+                self._ammeter_id, start_ms, end_ms
+            )
+        else:
+            _LOGGER.debug("WHES: Ammeter metrics ontvangen: %d rijen.", len(amm_rows))
         amm_last = normalize_power(amm_rows[-1]) if amm_rows else {}
 
         # Zelfde datastructuur als jouw bundel (arrays met max 1 element)
-        return {
+        bundle = {
             "ems": [ems_last] if ems_last else [],
             "ammeter": [amm_last] if amm_last else [],
         }
+
+        # Alert-momenten: wanneer "laatste meting" ontbreekt (lege array)
+        if not bundle["ems"]:
+            _LOGGER.error("WHES: Geen laatste EMS meting beschikbaar (empty array).")
+        if not bundle["ammeter"]:
+            _LOGGER.error("WHES: Geen laatste Ammeter meting beschikbaar (empty array).")
+
+        _LOGGER.debug(
+            "WHES: fetch_bundle klaar (ems=%d, ammeter=%d).",
+            len(bundle["ems"]), len(bundle["ammeter"])
+        )
+        return bundle

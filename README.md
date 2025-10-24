@@ -1,6 +1,13 @@
+<p align="center">
+  <a href="https://github.com/WentzoDevelopment">
+    <img src="https://github.com/WentzoDevelopment.png" 
+         alt="Wentzo Logo" width="180" style="border-radius:50%">
+  </a>
+</p>
+
 # WHES Battery (Home Assistant Integration)
 
-Home Assistant integration for WHES / Weiheng Energy Management System (EMS) and Ammeter metrics.
+Home Assistant integration for WHES / Weiheng Energy Management System (EMS) and Ammeter metrics. Provided by Wentzo.
 
 This integration allows you to monitor various battery and energy parameters directly in Home Assistant, such as:
 - State of Charge (SoC) and State of Health (SoH)

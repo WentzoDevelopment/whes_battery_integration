@@ -113,7 +113,7 @@ def normalize_power(row: Dict[str, Any]) -> Dict[str, Any]:
     Keert het teken van site/grid vermogens om (optioneel),
     als jouw toepassing import/export zo verwacht.
     """
-    for k in ("ac_active_power", "ac_active_powers_0", "ac_active_powers_1", "ac_active_powers_2"):
+    for k in ("ac_active_power", "ac_active_powers_0", "ac_active_powers_1", "ac_active_powers_2", "ac_history_positive_power_in_kwh", "ac_history_negative_power_in_kwh"):
         if k in row and row[k] is not None:
             row[k] = -row[k]
     return row

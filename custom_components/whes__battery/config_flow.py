@@ -8,6 +8,7 @@ from homeassistant.data_entry_flow import FlowResult
 from .const import *
 from .api import validate_credentials
 
+
 class WhesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
@@ -53,6 +54,7 @@ class WhesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(config_entry: config_entries.ConfigEntry):
         return WhesOptionsFlow(config_entry)
 
+
 class WhesOptionsFlow(config_entries.OptionsFlow):
     def __init__(self, entry: config_entries.ConfigEntry):
         self.entry = entry
@@ -65,7 +67,8 @@ class WhesOptionsFlow(config_entries.OptionsFlow):
 
         schema = vol.Schema({
             vol.Optional(CONF_SAMPLE_BY, default=self.entry.data.get(CONF_SAMPLE_BY, DEFAULT_SAMPLE_BY)): str,
-            vol.Optional(CONF_SCAN_INTERVAL, default=self.entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): int,
+            vol.Optional(CONF_SCAN_INTERVAL,
+                         default=self.entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)): int,
             vol.Optional(CONF_NAME_PREFIX, default=self.entry.data.get(CONF_NAME_PREFIX, DEFAULT_NAME_PREFIX)): str,
             vol.Optional(CONF_BASE_URL, default=self.entry.data.get(CONF_BASE_URL, DEFAULT_BASE_URL)): str,
             # (bewust geen IDs/keys hier; dat doe je liever via Reconfigure)

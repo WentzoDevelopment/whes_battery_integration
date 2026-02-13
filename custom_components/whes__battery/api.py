@@ -18,7 +18,6 @@ from .const import *
 _LOGGER = logging.getLogger(__name__)
 
 
-# ===== helpers uit jouw main.py (aangepast naar async usage) =====
 def now_ms() -> int:
     return int(time.time() * 1000)
 
@@ -180,7 +179,7 @@ class WhesClient:
             ]
         )
 
-        string_to_sign = f"{method.upper()}" + "".join(f"{k}: {v}" for k, v in headers_ordered.items())
+        string_to_sign = f"{method.upper()}\n" + "".join(f"{k}:{v}\n" for k, v in headers_ordered.items())
         canonical = canonical_path_and_query(full_url, params)
         string_to_sign += canonical
 

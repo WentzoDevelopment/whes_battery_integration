@@ -42,7 +42,7 @@ def metrics_to_kv_list(metrics_resp: dict) -> List[Dict[str, Any]]:
     return out
 
 def normalize_power_row(row: Dict[str, Any]) -> Dict[str, Any]:
-    for k in ("ac_active_power","ac_active_powers_0","ac_active_powers_1","ac_active_powers_2"):
+    for k in ("ac_active_power","ac_active_powers_0","ac_active_powers_1","ac_active_powers_2", "ac_history_positive_power_in_kwh", "ac_history_negative_power_in_kwh"):
         if k in row and row[k] is not None:
             try: row[k] = -float(row[k])
             except: pass
@@ -120,7 +120,8 @@ class WhesCoordinator(DataUpdateCoordinator[dict]):
             "ems_ac_active_power_A","ems_ac_active_power_B","ems_ac_active_power_C"
         ]}
         amm_body = {"start": start_ms, "end": end_ms, "sample_by": sample, "columns": [
-            "ac_active_power","ac_active_powers_0","ac_active_powers_1","ac_active_powers_2"
+            "ac_active_power","ac_active_powers_0","ac_active_powers_1","ac_active_powers_2",
+            "ac_history_positive_power_in_kwh","ac_history_negative_power_in_kwh"
         ]}
 
         ems_path = f"/pangu/v1/projects/{d[CONF_PROJECT_ID]}/devices/{d[CONF_DEVICE_ID]}/ems/metrics"

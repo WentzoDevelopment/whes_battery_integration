@@ -280,6 +280,8 @@ class WhesClient:
                 "ac_active_powers_0",
                 "ac_active_powers_1",
                 "ac_active_powers_2",
+                "ac_history_positive_power_in_kwh",
+                "ac_history_negative_power_in_kwh",
             ],
         }
         amm_raw = await self._post(ammeter_path, json_body=ammeter_body)

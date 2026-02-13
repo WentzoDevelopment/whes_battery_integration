@@ -26,6 +26,8 @@ SENSOR_MAP = {
     "ac_active_powers_0": ("Grid Phase L1 Power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
     "ac_active_powers_1": ("Grid Phase L2 Power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
     "ac_active_powers_2": ("Grid Phase L3 Power", UnitOfPower.WATT, SensorDeviceClass.POWER, SensorStateClass.MEASUREMENT),
+    "ac_history_positive_power_in_kwh": ("Grid Import Energy (hist)", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL_INCREASING),
+    "ac_history_negative_power_in_kwh": ("Return to Grid Energy (hist)", UnitOfEnergy.KILO_WATT_HOUR, SensorDeviceClass.ENERGY, SensorStateClass.TOTAL_INCREASING),
 }
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):

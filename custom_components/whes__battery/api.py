@@ -10,10 +10,14 @@ from urllib.parse import urlparse, parse_qs, quote
 import aiohttp
 import logging
 
-# Home Assistant-style logger
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+from .const import *
+
 _LOGGER = logging.getLogger(__name__)
 
-# ===== helpers uit jouw main.py (aangepast naar async usage) =====
+
 def now_ms() -> int:
     return int(time.time() * 1000)
 
@@ -39,9 +43,9 @@ def _unique_columns(cols: List[str]) -> List[str]:
 
 
 def metrics_to_kv_list(
-    metrics_resp: dict,
-    *,
-    extra_coercers: Optional[Dict[str, Callable[[Any], Any]]] = None,
+        metrics_resp: dict,
+        *,
+        extra_coercers: Optional[Dict[str, Callable[[Any], Any]]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Converteert het WHES metrics-formaat (columns/rows/metadata) naar
@@ -113,7 +117,7 @@ def normalize_power(row: Dict[str, Any]) -> Dict[str, Any]:
     Keert het teken van site/grid vermogens om (optioneel),
     als jouw toepassing import/export zo verwacht.
     """
-    for k in ("ac_active_power", "ac_active_powers_0", "ac_active_powers_1", "ac_active_powers_2", "ac_history_positive_power_in_kwh", "ac_history_negative_power_in_kwh"):
+    for k in ("ac_active_power", "ac_active_powers_0", "ac_active_powers_1", "ac_active_powers_2"):
         if k in row and row[k] is not None:
             row[k] = -row[k]
     return row
@@ -148,14 +152,14 @@ def canonical_path_and_query(full_url: str, extra_params: dict | None = None) ->
 
 class WhesClient:
     def __init__(
-        self,
-        session: aiohttp.ClientSession,
-        base_url: str,
-        api_key: str,
-        api_secret: str,
-        project_id: str,
-        device_id: str,
-        ammeter_id: str,
+            self,
+            session: aiohttp.ClientSession,
+            base_url: str,
+            api_key: str,
+            api_secret: str,
+            project_id: str,
+            device_id: str,
+            ammeter_id: str,
     ) -> None:
         self._session = session
         self._base = base_url.rstrip("/")
@@ -175,7 +179,7 @@ class WhesClient:
             ]
         )
 
-        string_to_sign = f"{method.upper()}" + "".join(f"{k}: {v}" for k, v in headers_ordered.items())
+        string_to_sign = f"{method.upper()}\n" + "".join(f"{k}:{v}\n" for k, v in headers_ordered.items())
         canonical = canonical_path_and_query(full_url, params)
         string_to_sign += canonical
 
@@ -195,11 +199,11 @@ class WhesClient:
                 path, list((params or {}).keys()), list((json_body or {}).keys())
             )
             async with self._session.post(
-                url,
-                headers=headers,
-                params=params,
-                json=json_body,
-                timeout=aiohttp.ClientTimeout(total=20),
+                    url,
+                    headers=headers,
+                    params=params,
+                    json=json_body,
+                    timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
                 status = resp.status
                 # NB: raise_for_status zal bij 4xx/5xx exception gooien (we loggen dat in except)
@@ -230,10 +234,19 @@ class WhesClient:
             _LOGGER.exception("WHES: Onverwachte fout bij POST %s: %r (na %d ms)", path, e, dt_ms)
             raise
 
-    async def fetch_bundle(self, poll_seconds: int = 60, overlap_seconds: int = 15) -> Dict[str, Any]:
+    async def validate(self) -> None:
+        """Lichtgewicht probe-call om credentials te valideren."""
+        end_ms = now_ms()
+        start_ms = end_ms - 30_000
+        ems_path = f"/pangu/v1/projects/{self._project_id}/devices/{self._device_id}/ems/metrics"
+        await self._post(ems_path, json_body={
+            "start": start_ms, "end": end_ms, "sample_by": "10s", "columns": ["ems_soc"],
+        })
+
+    async def fetch_bundle(self, poll_seconds: int = 60, overlap_seconds: int = 15, sample_by: str = "10s") -> Dict[
+        str, Any]:
         end_ms = now_ms()
         start_ms = end_ms - (poll_seconds + overlap_seconds) * 1000
-        sample_by = "10s"
 
         _LOGGER.debug(
             "WHES: fetch_bundle window start=%d end=%d (poll=%ds, overlap=%ds, sample_by=%s)",
@@ -264,10 +277,10 @@ class WhesClient:
         ems_raw = await self._post(ems_path, json_body=ems_body)
         ems_rows = metrics_to_kv_list(ems_raw)
         if not ems_rows:
-            _LOGGER.error("WHES: EMS metrics leeg voor device_id=%s (window=%d..%d).", self._device_id, start_ms, end_ms)
+            _LOGGER.error("WHES: EMS metrics leeg voor device_id=%s (window=%d..%d).", self._device_id, start_ms,
+                          end_ms)
         else:
             _LOGGER.debug("WHES: EMS metrics ontvangen: %d rijen.", len(ems_rows))
-        ems_last = ems_rows[-1] if ems_rows else {}
 
         # Ammeter
         ammeter_path = f"/pangu/v1/projects/{self._project_id}/ammeters/{self._ammeter_id}/metrics"
@@ -293,22 +306,31 @@ class WhesClient:
             )
         else:
             _LOGGER.debug("WHES: Ammeter metrics ontvangen: %d rijen.", len(amm_rows))
+
+        ems_last = ems_rows[-1] if ems_rows else {}
         amm_last = normalize_power(amm_rows[-1]) if amm_rows else {}
 
-        # Zelfde datastructuur als jouw bundel (arrays met max 1 element)
-        bundle = {
-            "ems": [ems_last] if ems_last else [],
-            "ammeter": [amm_last] if amm_last else [],
-        }
+        return {"ems": ems_last, "ammeter": amm_last}
 
-        # Alert-momenten: wanneer "laatste meting" ontbreekt (lege array)
-        if not bundle["ems"]:
-            _LOGGER.error("WHES: Geen laatste EMS meting beschikbaar (empty array).")
-        if not bundle["ammeter"]:
-            _LOGGER.error("WHES: Geen laatste Ammeter meting beschikbaar (empty array).")
 
-        _LOGGER.debug(
-            "WHES: fetch_bundle klaar (ems=%d, ammeter=%d).",
-            len(bundle["ems"]), len(bundle["ammeter"])
-        )
-        return bundle
+async def validate_credentials(hass: HomeAssistant, data: dict) -> tuple[bool, str | None]:
+    """Probe-call om keys/IDs te valideren in de config flow."""
+    session = async_get_clientsession(hass)
+    client = WhesClient(
+        session=session,
+        base_url=data.get(CONF_BASE_URL, DEFAULT_BASE_URL),
+        api_key=data[CONF_API_KEY],
+        api_secret=data[CONF_API_SECRET],
+        project_id=data[CONF_PROJECT_ID],
+        device_id=data[CONF_DEVICE_ID],
+        ammeter_id=data[CONF_AMMETER_ID],
+    )
+    try:
+        await client.validate()
+        return True, None
+    except aiohttp.ClientResponseError as e:
+        if e.status in (401, 403):
+            return False, "invalid_auth"
+        return False, "cannot_connect"
+    except Exception:
+        return False, "cannot_connect"

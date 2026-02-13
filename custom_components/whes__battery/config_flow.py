@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 
 from .const import *
-from .coordinator import validate_credentials
+from .api import validate_credentials
 
 class WhesConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1

@@ -1,7 +1,7 @@
 {
   "domain": "whes",
   "name": "WHES Battery",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "documentation": "https://github.com/WentzoDevelopment/whes_battery_integration#readme",
   "issue_tracker": "https://github.com/WentzoDevelopment/whes_battery_integration/issues",
   "requirements": [
